@@ -26,6 +26,7 @@ function vehicle(length, width, u, lane, speed, type, driver_varcoeff){
   this.laneOld=lane;  // for logging and drawing vontinuous lat coords v
   this.speed=speed;
   this.type=type; //{"car", "truck", "others", "obstacle"
+  this.isAV=false;   // distinguishes autonomous vs human-driven cars
   this.acc=0;
 
   ivehCount++;

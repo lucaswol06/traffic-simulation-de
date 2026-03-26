@@ -495,25 +495,25 @@ CACC.prototype.calcAcc = function (s, v, vl, al) {
 
 
 CACC.prototype.calcAccDet = function (s, v, vl, al) {
-  var v0eff = this.v0 * this.driverfactor * this.alpha_v0; // (MT 2023-11)
+  var v0eff = this.v0 * this.driverfactor * this.alpha_v0;
   v0eff = Math.min(v0eff, this.speedlimit, this.speedmax);
   var aeff = this.a * this.driverfactor;
 
-  var accFree = v < v0eff
+  var accFree = (v < v0eff)
       ? aeff * (1 - Math.pow(v / v0eff, 4))
       : aeff * (1 - v / v0eff);
 
-  // Gipps formula
-  // var accFree=2.5*aeff*(1-v/v0eff)*sqrt{0.025+v/v0eff);
-  
-  
   var sstar = this.s0
       + Math.max(0, v * this.T
-		 + 0.5 * v * (v - vl) / Math.sqrt(aeff * this.b));
-  
+      + 0.5 * v * (v - vl) / Math.sqrt(aeff * this.b));
+
   var accInt = -aeff * Math.pow(sstar / Math.max(s, this.s0), 2);
 
-  return v0eff < 0.00001 ? 0 : Math.max(-this.bmax, accFree + accInt);
+  var accCoop = this.alpha * al;
+
+  var accTotal = accFree + accInt + accCoop;
+
+  return (v0eff < 0.00001) ? 0 : Math.max(-this.bmax, accTotal);
 };
 
 // Example Usage:

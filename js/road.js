@@ -214,26 +214,41 @@ function road(roadID,roadLen,laneWidth,nLanes,trajIn,
 // fracTruck, fracOthers
 //######################################################################
 
-road.prototype.getAttributes=function(fracTruck, fracOthers){
+road.prototype.getAttributes=function(fracTruck, fracOthers, fracAV){
   var others_frac=(typeof fracOthers==='undefined') ? 0 : fracOthers;
+  var av_frac=(typeof fracAV==='undefined') ? 0 : fracAV;
+
   var others_length=(typeof scooter_length==='undefined') ? 2.5 : scooter_length;
   var others_width=(typeof scooter_width==='undefined') ? 1.2 : scooter_width;
+
   var r=Math.random();
   var vehType=(r<fracTruck) ? "truck"
       : (r<fracTruck+others_frac) ? "others" : "car";
+
+  var isAVOut=(vehType === "car") ? (Math.random() < av_frac) : false;
+
   var lengthOut=(vehType === "car") ? car_length
-    :(vehType === "truck") ? truck_length:others_length;
+    : (vehType === "truck") ? truck_length : others_length;
+
   var widthOut=(vehType === "car") ? car_width
-    :(vehType === "truck") ? truck_width:others_width;
-  var attributes={type:vehType,
-		  len: lengthOut,
-		  width: widthOut
-		 };
+    : (vehType === "truck") ? truck_width : others_width;
+
+  var attributes={
+    type: vehType,
+    len: lengthOut,
+    width: widthOut,
+    isAV: isAVOut
+  };
+
   if(false){
-    console.log("road.getAttributes: r=",r," fracTruck=",fracTruck,
-		" fracTruck+others_frac=",fracTruck+others_frac);
+    console.log("road.getAttributes: vehType=",vehType,
+                " fracTruck=",fracTruck,
+                " fracOthers=",others_frac,
+                " fracAV=",av_frac,
+                " isAVOut=",isAVOut);
   }
-  return attributes 
+
+  return attributes;
 }
 
 
@@ -290,7 +305,7 @@ road.prototype.initRegularVehicles=function(densityPerLane,fracTruck,
 
     // initRegularVehicles: vehTypes
     // vehAttr={type: vehType, len: length, width: width}
-    var vehAttr=this.getAttributes(fracTruck, fracOthers);
+    var vehAttr=this.getAttributes(fracTruck, fracOthers, fracAV);
     console.log("vehAttr=",vehAttr);
     var vehType=vehAttr.type;
     var vehLength=vehAttr.len;
@@ -307,10 +322,11 @@ road.prototype.initRegularVehicles=function(densityPerLane,fracTruck,
     // do not place new vehicles within obstacles, traffic lights etc
 
     if((sLead>2)&&(sFollow>2)){ 
-      vehPlus[iveh]=new vehicle(vehLength, vehWidth,u,lane,
-				0.8*speedInit,vehType,
-				this.driver_varcoeff); // IC
-     iveh++;
+    vehPlus[iveh]=new vehicle(vehLength, vehWidth,u,lane,
+                              0.8*speedInit,vehType,
+                              this.driver_varcoeff); // IC
+    vehPlus[iveh].isAV = vehAttr.isAV;
+    iveh++;
     }
   }
 
@@ -1251,7 +1267,7 @@ road.prototype.updateDensity=function(density){
 
       // updateDensity: vehTypes
       // vehAttr={type: vehType, len: length, width: width}
-      var vehAttr=this.getAttributes(fracTruck, fracOthers);
+      var vehAttr=this.getAttributes(fracTruck, fracOthers, fracAV);
       var vehType=vehAttr.type;
       var vehLength=vehAttr.len;
       var vehWidth=vehAttr.width;
@@ -1300,6 +1316,7 @@ road.prototype.updateDensity=function(density){
 	    var vehNew=new vehicle(vehLength,vehWidth,uNew,laneNew,
 				   speedNew,vehType,
 				   this.driver_varcoeff); //updateDensity
+      vehNew.isAV = vehAttr.isAV;
 
 	  // add vehicle at position k  (k=0 ... n-1)
 	  
@@ -3700,7 +3717,7 @@ road.prototype.updateBCup=function(Qin,dt,route){
 
     // updateBCup: vehTypes: get new vehicle characteristics
     // vehAttr={type: vehType, len: length, width: width}
-    var vehAttr=this.getAttributes(fracTruck, fracOthers);
+    var vehAttr=this.getAttributes(fracTruck, fracOthers, fracAV);
     var vehType=vehAttr.type;
     var vehLength=vehAttr.len;
     var vehWidth=vehAttr.width;
@@ -3770,6 +3787,7 @@ road.prototype.updateBCup=function(Qin,dt,route){
 				space/longModelNew.T);
       var vehNew=new vehicle(vehLength,vehWidth,uNew,lane,speedNew,vehType,
 			    this.driver_varcoeff); //updateBCup
+      vehNew.isAV = vehAttr.isAV;
 
       vehNew.longModel=new ACC(); vehNew.longModel.copy(longModelNew);
 
@@ -3932,22 +3950,33 @@ road.prototype.updateModelsOfAllVehicles=function(longModelCar,longModelTruck,
   // !!! new scooters have for now car models
 
   for(var i=0; i<this.veh.length; i++){
-    if(this.veh[i].isRegularVeh()){
-      this.veh[i].longModel.copy((this.veh[i].type === "truck")
-				   ? longModelTruck : longModelCar);
-      this.veh[i].LCModel.copy((this.veh[i].type === "truck")
-				 ? LCModelTruck : LCModelCar);
+  if(this.veh[i].isRegularVeh()){
 
-      this.veh[i].longModel.driverfactor=this.veh[i].driverfactor;
-    
-      
-      if(false){
-        console.log("updateModelsOfAllVehicles: type="+this.veh[i].type,
-		  " speedl="+this.veh[i].longModel.speedlimit,
-		  " longModelTruck.speedlimit="+longModelTruck.speedlimit);
-      }
+    if(this.veh[i].type === "truck"){
+      this.veh[i].longModel.copy(longModelTruck);
+      this.veh[i].LCModel.copy(LCModelTruck);
+    }
+
+    else if(this.veh[i].isAV){
+      this.veh[i].longModel.copy(longModelAV);
+      this.veh[i].LCModel.copy(LCModelAV);
+    }
+
+    else{
+      this.veh[i].longModel.copy(longModelCar);
+      this.veh[i].LCModel.copy(LCModelCar);
+    }
+
+    this.veh[i].longModel.driverfactor=this.veh[i].driverfactor;
+
+    if(false){
+      console.log("updateModelsOfAllVehicles: type="+this.veh[i].type,
+        " isAV="+this.veh[i].isAV,
+        " speedl="+this.veh[i].longModel.speedlimit,
+        " longModelTruck.speedlimit="+longModelTruck.speedlimit);
     }
   }
+}
 
 
   
@@ -4776,26 +4805,34 @@ road.prototype.drawVehicle=function(i,carImg, truckImg, obstacleImg,
     //     (different size of box because of mirrors of veh images)
 
   if((type!="obstacle")&&(speedmax>1e-10)){ // no box if speedmin=speedmax=0
-        var effLenPix=(type==="truck") ? 0.90*vehLenPix : 1.00*vehLenPix;
-        var effWPix=(type==="truck") ? 0.80*vehWidthPix : 0.60*vehWidthPix;
-        var speed=this.veh[i].speed;
-	var isEgo=(this.veh[i].id===1);
-        ctx.fillStyle=(this.veh[i].colorStyle==0)
-	    ? colormapSpeed(speed,speedmin,speedmax,type, isEgo,time)
-	    : (this.veh[i].colorStyle==1) ? "rgba(0,0,255,0.5)"
-	    : (this.veh[i].colorStyle==2) ? "rgba(255,255,0,0.5)"
-	    : "rgba(255,0,0,0.5)";
-	ctx.fillRect(-0.5*effLenPix, -0.5*effWPix, effLenPix, effWPix);
-	if(isEgo||this.veh[i].isPerturbed()||(this.veh[i].colorStyle>0)){
-		  ctx.strokeStyle="rgb(0,0,0)";
-		  ctx.strokeRect(-0.50*effLenPix, -0.50*effWPix, 
-			       1.0*effLenPix, 1.0*effWPix);
-		  ctx.strokeRect(-0.55*effLenPix, -0.55*effWPix, 
-			       1.1*effLenPix, 1.1*effWPix);
-		  ctx.strokeRect(-0.60*effLenPix, -0.60*effWPix, 
-			       1.2*effLenPix, 1.2*effWPix);
-	}
+      var effLenPix=(type==="truck") ? 0.90*vehLenPix : 1.00*vehLenPix;
+      var effWPix=(type==="truck") ? 0.80*vehWidthPix : 0.60*vehWidthPix;
+      var speed=this.veh[i].speed;
+  var isEgo=(this.veh[i].id===1);
+
+      if(this.veh[i].isAV){
+    ctx.fillStyle="rgba(0,255,255,0.7)";
+      }
+      else{
+    ctx.fillStyle=(this.veh[i].colorStyle==0)
+      ? colormapSpeed(speed,speedmin,speedmax,type, isEgo,time)
+      : (this.veh[i].colorStyle==1) ? "rgba(0,0,255,0.5)"
+      : (this.veh[i].colorStyle==2) ? "rgba(255,255,0,0.5)"
+      : "rgba(255,0,0,0.5)";
+      }
+
+  ctx.fillRect(-0.5*effLenPix, -0.5*effWPix, effLenPix, effWPix);
+
+  if(isEgo||this.veh[i].isPerturbed()||(this.veh[i].colorStyle>0)||this.veh[i].isAV){
+      ctx.strokeStyle="rgb(0,0,0)";
+      ctx.strokeRect(-0.50*effLenPix, -0.50*effWPix, 
+             1.0*effLenPix, 1.0*effWPix);
+      ctx.strokeRect(-0.55*effLenPix, -0.55*effWPix, 
+             1.1*effLenPix, 1.1*effWPix);
+      ctx.strokeRect(-0.60*effLenPix, -0.60*effWPix, 
+             1.2*effLenPix, 1.2*effWPix);
     }
+  }
 
     //(6) optionally draw vehicle ID near the vehicle
 

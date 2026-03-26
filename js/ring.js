@@ -157,7 +157,7 @@ function updateDimensions(){ // if viewport or sizePhys changed
 // => road becomes more compact for smaller screens
 
 var laneWidth=8; // remains constant => road becomes more compact for smaller
-var nLanes_main=3;
+var nLanes_main=1;
 
 var car_length=7; // car length in m
 var car_width=6; // car width in m

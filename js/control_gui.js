@@ -617,6 +617,25 @@ if(document.getElementById("slider_fracTruck")!==null){
     }
 }
 
+var fracAV=0.20; // fraction of non-truck cars that are autonomous
+var fracAVToleratedMismatch=1; // relaxed by default, can be overridden in scenario
+
+// AV fraction slider
+
+var slider_fracAV;
+var slider_fracAVVal;
+if(document.getElementById("slider_fracAV")!==null){
+    slider_fracAV = document.getElementById("slider_fracAV");
+    slider_fracAVVal = document.getElementById("slider_fracAVVal");
+    slider_fracAV.value=100*fracAV;
+    slider_fracAVVal.innerHTML=100*fracAV+" %";
+
+    slider_fracAV.oninput = function() {
+        slider_fracAVVal.innerHTML = this.value+" %";
+        fracAV=parseFloat(this.value/100.);
+    }
+}
+
 // scooter/third veh type fraction slider
 
 var fracScooter=0.00; // 
@@ -1015,8 +1034,10 @@ if(document.getElementById("slider_MOBIL_p")!==null){
 
 var longModelCar;
 var longModelTruck;
+var longModelAV;
 var LCModelCar;
 var LCModelTruck;
+var LCModelAV;
 var LCModelMandatory; // left-right discrim in road.updateModelsOfAllVehicles
 
 var longModelCarUphill;
@@ -1040,6 +1061,14 @@ var MOBIL_mandat_bias=42;
 var factor_a_truck=0.8; // v0_truck controlled/restricted by speedL_truck
 var factor_T_truck=1.1;
 
+// AV model parameters (first implementation: ACC with different parameters)
+
+var IDM_v0_AV=30;     // desired speed [m/s]
+var IDM_T_AV=0.8;     // shorter time gap for AVs
+var IDM_s0_AV=1.0;    // slightly smaller minimum gap
+var IDM_a_AV=0.5;     // somewhat stronger acceleration than default car
+var IDM_b_AV=3.0;     // comfortable decel
+
 
 // creates template models from the preset IDM_v0, IDM_a etc values
 // (2019-09)
@@ -1048,33 +1077,43 @@ var factor_T_truck=1.1;
 function updateModels(){
   var v0=Math.min(IDM_v0, speedL);
   var v0_truck=Math.min(IDM_v0, speedL_truck);
+  var v0_AV=Math.min(IDM_v0_AV, speedL);
+
   var T_truck=factor_T_truck*IDM_T;
   var a_truck=factor_a_truck*IDM_a;
+
   longModelCar=new ACC(v0,IDM_T,IDM_s0,IDM_a,IDM_b);
   longModelTruck=new ACC(v0_truck,T_truck,IDM_s0,a_truck,IDM_b);
+  longModelAV=new ACC(v0_AV,IDM_T_AV,IDM_s0_AV,IDM_a_AV,IDM_b_AV);
+
   if(testNewModel){
     longModelCar=new CACC(v0,IDM_T,IDM_s0,IDM_a,IDM_b,1,0.1);
-    //longModelTruck=new CACC(v0_truck,T_truck,IDM_s0,a_truck,IDM_b,1,0.1);
     longModelTruck=new CACC(3,T_truck,IDM_s0,a_truck,IDM_b,1,0.1);
+    longModelAV=new CACC(v0_AV,IDM_T_AV,IDM_s0_AV,IDM_a_AV,IDM_b_AV,1,0.1);
     console.log("longModelTruck=",longModelTruck);
   }
+
   longModelCar.speedlimit=speedL;
   longModelTruck.speedlimit=Math.min(speedL, speedL_truck);
+  longModelAV.speedlimit=speedL;
+
   LCModelCar=new MOBIL(MOBIL_bSafe, MOBIL_bSafeMax, MOBIL_p,
                         MOBIL_bThr, MOBIL_bBiasRight_car);
- 
+
   LCModelTruck=new MOBIL(MOBIL_bSafe, MOBIL_bSafeMax, MOBIL_p,
-			   MOBIL_bThr, MOBIL_bBiasRight_truck);
+                         MOBIL_bThr, MOBIL_bBiasRight_truck);
+
+  LCModelAV=new MOBIL(MOBIL_bSafe, MOBIL_bSafeMax, MOBIL_p,
+                      MOBIL_bThr, MOBIL_bBiasRight_car);
+
   LCModelMandatory=new MOBIL(MOBIL_mandat_bSafe, MOBIL_mandat_bSafe, 
-			       MOBIL_mandat_p,
-			       MOBIL_mandat_bThr, MOBIL_mandat_bias);
+                             MOBIL_mandat_p,
+                             MOBIL_mandat_bThr, MOBIL_mandat_bias);
 
   if(true){
     console.log("control_gui.updateModels:",
-		" LCModelMandatory=",LCModelMandatory);
+                " LCModelMandatory=",LCModelMandatory);
   }
-
-
 }
 
 
