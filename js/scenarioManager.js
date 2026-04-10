@@ -3,6 +3,15 @@
   var scenarioData = null;
   var originalUpdateSim = null;
   var scenarioActionsApplied = {};
+  var scenarioLog = null;
+  var scenarioLogConfig = {
+    enabled: true,
+    sampleEverySec: 0.5,
+    maxFrames: 20000,
+    logRegularOnly: false,
+    includeSpecialVehicles: true,
+    schemaVersion: "1.0.0"
+  };
 
   function createUI() {
     var container = document.getElementById("container");
@@ -56,6 +65,95 @@
       errors.push("aactions must be an defined");
     }
     return errors;
+  }
+
+  function nowIsoString() {
+    try {
+      return new Date().toISOString();
+    } catch (e) {
+      return "";
+    }
+  }
+
+  function toFiniteNumber(value, fallback) {
+    var n = Number(value);
+    return isFinite(n) ? n : fallback;
+  }
+
+  function mergeScenarioLogConfig(loggingInput) {
+    var merged = {
+      enabled: scenarioLogConfig.enabled,
+      sampleEverySec: scenarioLogConfig.sampleEverySec,
+      maxFrames: scenarioLogConfig.maxFrames,
+      logRegularOnly: scenarioLogConfig.logRegularOnly,
+      includeSpecialVehicles: scenarioLogConfig.includeSpecialVehicles,
+      schemaVersion: scenarioLogConfig.schemaVersion
+    };
+
+    if (loggingInput && typeof loggingInput === "object") {
+      if (loggingInput.enabled !== undefined) merged.enabled = !!loggingInput.enabled;
+      if (loggingInput.sampleEverySec !== undefined) {
+        merged.sampleEverySec = Math.max(0.01, toFiniteNumber(loggingInput.sampleEverySec, merged.sampleEverySec));
+      }
+      if (loggingInput.maxFrames !== undefined) {
+        merged.maxFrames = Math.max(100, Math.floor(toFiniteNumber(loggingInput.maxFrames, merged.maxFrames)));
+      }
+      if (loggingInput.logRegularOnly !== undefined) merged.logRegularOnly = !!loggingInput.logRegularOnly;
+      if (loggingInput.includeSpecialVehicles !== undefined) merged.includeSpecialVehicles = !!loggingInput.includeSpecialVehicles;
+      if (loggingInput.schemaVersion !== undefined && typeof loggingInput.schemaVersion === "string" && loggingInput.schemaVersion.trim() !== "") {
+        merged.schemaVersion = loggingInput.schemaVersion.trim();
+      }
+    }
+
+    scenarioLogConfig = merged;
+    return merged;
+  }
+
+  function initializeScenarioLog(data) {
+    var cfg = mergeScenarioLogConfig(data && data.logging ? data.logging : null);
+    scenarioLog = {
+      schemaVersion: cfg.schemaVersion,
+      meta: {
+        createdAt: nowIsoString(),
+        scenarioName: (typeof window.scenarioString !== "undefined" && window.scenarioString) ? String(window.scenarioString) : "unknown",
+        seed: (data && data.seed !== undefined) ? data.seed : null,
+        duration: (data && data.duration !== undefined) ? data.duration : null,
+        timewarp: (data && data.timewarp !== undefined) ? data.timewarp : null,
+        runStartedAtSimTime: (typeof window.time !== "undefined") ? window.time : 0
+      },
+      config: {
+        enabled: cfg.enabled,
+        sampleEverySec: cfg.sampleEverySec,
+        maxFrames: cfg.maxFrames,
+        logRegularOnly: cfg.logRegularOnly,
+        includeSpecialVehicles: cfg.includeSpecialVehicles
+      },
+      events: [],
+      frames: [],
+      stats: {}
+    };
+    window.scenarioLogData = scenarioLog;
+    return scenarioLog;
+  }
+
+  function getScenarioLogData() {
+    return scenarioLog;
+  }
+
+  function updateScenarioLogConfigRuntime(partialConfig) {
+    var cfg = mergeScenarioLogConfig(partialConfig);
+    if (scenarioLog) {
+      scenarioLog.config.enabled = cfg.enabled;
+      scenarioLog.config.sampleEverySec = cfg.sampleEverySec;
+      scenarioLog.config.maxFrames = cfg.maxFrames;
+      scenarioLog.config.logRegularOnly = cfg.logRegularOnly;
+      scenarioLog.config.includeSpecialVehicles = cfg.includeSpecialVehicles;
+    }
+    return cfg;
+  }
+
+  function setScenarioLoggingEnabled(isEnabled) {
+    return updateScenarioLogConfigRuntime({ enabled: !!isEnabled });
   }
 
   // IDM_v0: desired speed (free-flow speed)
@@ -301,6 +399,7 @@
     scenarioData = data;
     scenarioActive = true;
     scenarioActionsApplied = {};
+    initializeScenarioLog(data);
 
     // Wrap updateSim if not already done
     wrapUpdateSim();
@@ -408,6 +507,36 @@
     var el = document.getElementById("scenarioStatus");
     if (el) el.textContent = msg;
   }
+
+  window.scenarioLogControls = {
+    getConfig: function() {
+      return {
+        enabled: scenarioLogConfig.enabled,
+        sampleEverySec: scenarioLogConfig.sampleEverySec,
+        maxFrames: scenarioLogConfig.maxFrames,
+        logRegularOnly: scenarioLogConfig.logRegularOnly,
+        includeSpecialVehicles: scenarioLogConfig.includeSpecialVehicles,
+        schemaVersion: scenarioLogConfig.schemaVersion
+      };
+    },
+    setConfig: function(partialConfig) {
+      return updateScenarioLogConfigRuntime(partialConfig || {});
+    },
+    enable: function() {
+      return setScenarioLoggingEnabled(true);
+    },
+    disable: function() {
+      return setScenarioLoggingEnabled(false);
+    },
+    getLog: function() {
+      return getScenarioLogData();
+    },
+    clearLog: function() {
+      scenarioLog = null;
+      window.scenarioLogData = null;
+      return true;
+    }
+  };
 
   // as soon as page dom loads, we call our scenario manager
   if (document.readyState === "loading") {
