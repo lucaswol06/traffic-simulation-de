@@ -159,6 +159,58 @@
     scenarioLog.events.push(eventObj);
   }
 
+  function cloneSimpleValue(value) {
+    if (value === null || value === undefined) {
+      return value;
+    }
+
+    var t = typeof value;
+    if (t === "number" || t === "string" || t === "boolean") {
+      return value;
+    }
+
+    if (Array.isArray(value)) {
+      var arr = [];
+      for (var i = 0; i < value.length; i++) {
+        arr.push(cloneSimpleValue(value[i]));
+      }
+      return arr;
+    }
+
+    if (t === "object") {
+      var out = {};
+      for (var key in value) {
+        if (value.hasOwnProperty(key)) {
+          out[key] = cloneSimpleValue(value[key]);
+        }
+      }
+      return out;
+    }
+
+    return String(value);
+  }
+
+  function getActionFieldValue(veh, prop) {
+    if (!veh) return null;
+
+    if (prop === "longModel") {
+      if (!veh.longModel) return null;
+      return {
+        v0: veh.longModel.v0,
+        T: veh.longModel.T,
+        s0: veh.longModel.s0,
+        a: veh.longModel.a,
+        b: veh.longModel.b
+      };
+    }
+
+    if (prop === "lane") {
+      return veh.lane;
+    }
+
+    return cloneSimpleValue(veh[prop]);
+  }
+
   function isVehicleRegular(v) {
     if (!v) return false;
     if (typeof v.isRegularVeh === "function") {
@@ -407,8 +459,17 @@
       if (time >= a.time) {
         scenarioActionsApplied[key] = true;
         var targetVeh = findVehicleById(a.vehicleId);
+        var setObj = a.set || {};
         if (targetVeh) {
-          var setObj = a.set;
+          var beforeVals = {};
+          var afterVals = {};
+
+          for (var propRead in setObj) {
+            if (setObj.hasOwnProperty(propRead)) {
+              beforeVals[propRead] = getActionFieldValue(targetVeh, propRead);
+            }
+          }
+
           for (var prop in setObj) {
             if (setObj.hasOwnProperty(prop)) {
               if (prop === "speed") {
@@ -437,8 +498,31 @@
               }
             }
           }
+
+          for (var propAfter in setObj) {
+            if (setObj.hasOwnProperty(propAfter)) {
+              afterVals[propAfter] = getActionFieldValue(targetVeh, propAfter);
+            }
+          }
+
+          addScenarioEvent("action_applied", {
+            actionIndex: i,
+            scheduledTime: a.time,
+            appliedTime: time,
+            vehicleId: a.vehicleId,
+            set: cloneSimpleValue(setObj),
+            before: beforeVals,
+            after: afterVals
+          });
           console.log("scenarioManager: action at t=" + a.time + " applied to veh " + a.vehicleId, a.set);
         } else {
+          addScenarioEvent("action_target_missing", {
+            actionIndex: i,
+            scheduledTime: a.time,
+            appliedTime: time,
+            vehicleId: a.vehicleId,
+            set: cloneSimpleValue(setObj)
+          });
           console.warn("scenarioManager: vehicle id=" + a.vehicleId + " not found for action at t=" + a.time);
         }
       }
