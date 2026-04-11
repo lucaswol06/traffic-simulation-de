@@ -39,6 +39,13 @@
 
 
     document.getElementById("scenarioClearBtn").addEventListener("click", clearScenario);
+
+    var exportBtn = document.getElementById("scenarioExportBtn");
+    if (exportBtn) {
+      exportBtn.addEventListener("click", function() {
+        exportScenarioLogJson();
+      });
+    }
   }
 
   // handle errors
@@ -317,6 +324,69 @@
 
   function getScenarioLogData() {
     return scenarioLog;
+  }
+
+  function makeScenarioLogFilename() {
+    var scenarioName = "scenario";
+    if (typeof window.scenarioString !== "undefined" && window.scenarioString) {
+      scenarioName = String(window.scenarioString);
+    }
+
+    var safeName = scenarioName.replace(/[^a-zA-Z0-9_-]/g, "_");
+    var seedPart = "na";
+    if (scenarioLog && scenarioLog.meta && scenarioLog.meta.seed !== null && scenarioLog.meta.seed !== undefined) {
+      seedPart = String(scenarioLog.meta.seed);
+    }
+
+    var timePart = "0";
+    if (typeof window.time !== "undefined") {
+      timePart = String(Math.round(window.time * 10) / 10).replace(/\./g, "_");
+    }
+
+    return "scenarioLog_" + safeName + "_seed" + seedPart + "_t" + timePart + ".json";
+  }
+
+  function downloadJsonContent(content, filename) {
+    if (typeof window.download === "function") {
+      window.download(content, filename);
+      return true;
+    }
+
+    var blob = new Blob([content], { type: "application/json" });
+    if (window.navigator && window.navigator.msSaveBlob) {
+      window.navigator.msSaveBlob(blob, filename);
+      return true;
+    }
+
+    var url = window.URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    document.body.appendChild(a);
+    a.href = url;
+    a.download = filename;
+    setTimeout(function() {
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    }, 1);
+    return true;
+  }
+
+  function exportScenarioLogJson(filenameOverride) {
+    if (!scenarioLog) {
+      setStatus("No scenario log to export.");
+      return false;
+    }
+
+    addScenarioEvent("log_export_requested", {
+      frameCount: scenarioLog.frames ? scenarioLog.frames.length : 0,
+      eventCount: scenarioLog.events ? scenarioLog.events.length : 0
+    });
+
+    var filename = filenameOverride || makeScenarioLogFilename();
+    var content = JSON.stringify(scenarioLog, null, 2);
+    downloadJsonContent(content, filename);
+    setStatus("Scenario log exported: " + filename);
+    return true;
   }
 
   function updateScenarioLogConfigRuntime(partialConfig) {
@@ -792,6 +862,9 @@
     },
     getLog: function() {
       return getScenarioLogData();
+    },
+    exportLog: function(filename) {
+      return exportScenarioLogJson(filename);
     },
     clearLog: function() {
       scenarioLog = null;
