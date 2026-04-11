@@ -4,6 +4,8 @@
   var originalUpdateSim = null;
   var scenarioActionsApplied = {};
   var scenarioLog = null;
+  var scenarioLastFrameTime = null;
+  var scenarioFrameLimitReached = false;
   var scenarioLogConfig = {
     enabled: true,
     sampleEverySec: 0.5,
@@ -57,12 +59,6 @@
     }
     if (data.parameters !== undefined && typeof data.parameters !== "object") {
       errors.push("parameters must be an object");
-    }
-    if (data.vehicles !== undefined) {
-      errors.push("vehicles must be defined");
-    }
-    if (data.actions !== undefined) {
-      errors.push("aactions must be an defined");
     }
     return errors;
   }
@@ -132,6 +128,8 @@
       frames: [],
       stats: {}
     };
+    scenarioLastFrameTime = null;
+    scenarioFrameLimitReached = false;
     window.scenarioLogData = scenarioLog;
     return scenarioLog;
   }
@@ -159,6 +157,110 @@
     };
 
     scenarioLog.events.push(eventObj);
+  }
+
+  function isVehicleRegular(v) {
+    if (!v) return false;
+    if (typeof v.isRegularVeh === "function") {
+      return v.isRegularVeh();
+    }
+    return (v.id >= 200) && (v.type !== "obstacle");
+  }
+
+  function isVehicleSpecial(v) {
+    if (!v) return false;
+    if (typeof v.isSpecialVeh === "function") {
+      return v.isSpecialVeh();
+    }
+    return (v.id >= 50) && (v.id < 200);
+  }
+
+  function shouldLogVehicle(v) {
+    if (!scenarioLog || !scenarioLog.config) return false;
+    if (scenarioLog.config.logRegularOnly) {
+      return isVehicleRegular(v);
+    }
+    if (scenarioLog.config.includeSpecialVehicles) {
+      return true;
+    }
+    return !isVehicleSpecial(v);
+  }
+
+  function canCaptureFrameNow() {
+    if (!scenarioLog) return false;
+    if (!scenarioLog.config || !scenarioLog.config.enabled) return false;
+    if (!Array.isArray(scenarioLog.frames)) return false;
+    if (scenarioLog.frames.length >= scenarioLog.config.maxFrames) return false;
+    if (typeof window.time === "undefined") return false;
+
+    if (scenarioLastFrameTime === null) {
+      return true;
+    }
+
+    var delta = window.time - scenarioLastFrameTime;
+    var step = scenarioLog.config.sampleEverySec;
+    return delta >= (step - 1e-9);
+  }
+
+  function captureScenarioFrame() {
+    if (!canCaptureFrameNow()) {
+      if (scenarioLog && scenarioLog.config && Array.isArray(scenarioLog.frames)) {
+        if (!scenarioFrameLimitReached && scenarioLog.frames.length >= scenarioLog.config.maxFrames) {
+          scenarioFrameLimitReached = true;
+          addScenarioEvent("frame_limit_reached", {
+            maxFrames: scenarioLog.config.maxFrames
+          });
+        }
+      }
+      return;
+    }
+
+    if (typeof network === "undefined") return;
+
+    var frameVehicles = [];
+    for (var ir = 0; ir < network.length; ir++) {
+      var rd = network[ir];
+      if (!rd || !rd.veh) continue;
+
+      for (var iv = 0; iv < rd.veh.length; iv++) {
+        var veh = rd.veh[iv];
+        if (!shouldLogVehicle(veh)) continue;
+
+        var routeCopy = [];
+        if (veh.route && veh.route.length) {
+          for (var ri = 0; ri < veh.route.length; ri++) {
+            routeCopy.push(veh.route[ri]);
+          }
+        }
+
+        frameVehicles.push({
+          id: veh.id,
+          roadID: rd.roadID,
+          type: veh.type,
+          isAV: !!veh.isAV,
+          u: veh.u,
+          v: veh.v,
+          lane: veh.lane,
+          speed: veh.speed,
+          acc: veh.acc,
+          len: veh.len,
+          width: veh.width,
+          driverfactor: veh.driverfactor,
+          route: routeCopy
+        });
+      }
+    }
+
+    var frame = {
+      t: (typeof window.time !== "undefined") ? window.time : 0,
+      itime: (typeof window.itime !== "undefined") ? window.itime : 0,
+      dt: (typeof window.dt !== "undefined") ? window.dt : null,
+      vehicleCount: frameVehicles.length,
+      vehicles: frameVehicles
+    };
+
+    scenarioLog.frames.push(frame);
+    scenarioLastFrameTime = frame.t;
   }
 
   function getScenarioLogData() {
@@ -382,6 +484,7 @@
     window.updateSim = function() {
       originalUpdateSim();
       if (scenarioActive) {
+        captureScenarioFrame();
         applyActions();
         checkDuration();
       }
