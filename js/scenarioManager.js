@@ -136,6 +136,31 @@
     return scenarioLog;
   }
 
+  function addScenarioEvent(eventType, payload) {
+    if (!scenarioLog) return;
+    if (!scenarioLog.config || !scenarioLog.config.enabled) return;
+
+    var simTime = 0;
+    var simIndex = 0;
+
+    if (typeof window.time !== "undefined") {
+      simTime = window.time;
+    }
+    if (typeof window.itime !== "undefined") {
+      simIndex = window.itime;
+    }
+
+    var eventObj = {
+      type: eventType,
+      t: simTime,
+      itime: simIndex,
+      ts: nowIsoString(),
+      payload: payload || {}
+    };
+
+    scenarioLog.events.push(eventObj);
+  }
+
   function getScenarioLogData() {
     return scenarioLog;
   }
@@ -337,6 +362,10 @@
         var btn = document.getElementById("startStop");
         if (btn) btn.src = "figs/buttonGo_small.png";
         setStatus("Scenario complete at t=" + scenarioData.duration + "s");
+        addScenarioEvent("sim_paused_duration", {
+          duration: scenarioData.duration,
+          reason: "duration_reached"
+        });
         console.log("scenarioManager: auto-paused at duration=" + scenarioData.duration);
       }
     }
@@ -400,6 +429,11 @@
     scenarioActive = true;
     scenarioActionsApplied = {};
     initializeScenarioLog(data);
+    addScenarioEvent("scenario_loaded", {
+      hasParameters: !!data.parameters,
+      vehicleCount: (data.vehicles && data.vehicles.length) ? data.vehicles.length : 0,
+      actionCount: (data.actions && data.actions.length) ? data.actions.length : 0
+    });
 
     // Wrap updateSim if not already done
     wrapUpdateSim();
@@ -413,10 +447,18 @@
     if (typeof Math.seedrandom === "function") {
       Math.seedrandom(seed);
     }
+    addScenarioEvent("seed_set", {
+      seed: seed,
+      seeded: typeof Math.seedrandom === "function"
+    });
 
     // Reset time
     window.time = 0;
     window.itime = 0;
+    addScenarioEvent("time_reset", {
+      time: 0,
+      itime: 0
+    });
 
     // Apply timewarp
     if (data.timewarp !== undefined) {
@@ -427,6 +469,10 @@
       if (sl) sl.value = data.timewarp;
       if (slv) slv.innerHTML = data.timewarp + " times";
     }
+    addScenarioEvent("timewarp_applied", {
+      timewarp: window.timewarp,
+      dt: window.dt
+    });
 
     // Save defaults for clear
     suppressAutoGeneration();
@@ -434,6 +480,15 @@
     // Apply parameters (this also calls updateModels)
     if (data.parameters) {
       applyParameters(data.parameters);
+      addScenarioEvent("params_applied", {
+        parameterKeys: Object.keys(data.parameters),
+        count: Object.keys(data.parameters).length
+      });
+    } else {
+      addScenarioEvent("params_applied", {
+        parameterKeys: [],
+        count: 0
+      });
     }
 
     // Handle vehicles: if defined, override all auto-generation
@@ -458,6 +513,10 @@
         network[ir].inVehBuffer = 0;
       }
       placeVehicles(data.vehicles);
+      addScenarioEvent("vehicles_placed", {
+        mode: "scenario_defined",
+        count: data.vehicles.length
+      });
     } else {
       // No explicit vehicles: use standard restart with scenario params
       for (var ir2 = 0; ir2 < network.length; ir2++) {
@@ -466,6 +525,10 @@
         rd.initRegularVehicles(density, fracTruck, fracScooter, speedInit);
         rd.inVehBuffer = rd.inVehBufferInit;
       }
+      addScenarioEvent("vehicles_placed", {
+        mode: "auto_generated",
+        count: null
+      });
     }
 
     // Reset detectors
@@ -479,12 +542,21 @@
     if (typeof Math.seedrandom === "function") {
       Math.seedrandom(seed);
     }
+    addScenarioEvent("seed_set", {
+      seed: seed,
+      seeded: typeof Math.seedrandom === "function",
+      phase: "post_setup"
+    });
 
     // Start sim
     isStopped = false;
     var btn = document.getElementById("startStop");
     if (btn) btn.src = "figs/buttonStop3_small.png";
     myRun = setInterval(main_loop, 1000 / fps);
+    addScenarioEvent("sim_started", {
+      fps: fps,
+      intervalMs: 1000 / fps
+    });
 
     setStatus("Scenario running" + (data.duration ? " (duration: " + data.duration + "s)" : ""));
     console.log("scenarioManager: scenario loaded and running", data);
@@ -492,6 +564,9 @@
 
   function clearScenario() {
     if (scenarioActive) {
+      addScenarioEvent("scenario_cleared", {
+        reason: "manual_clear"
+      });
       scenarioActive = false;
       scenarioData = null;
       scenarioActionsApplied = {};
