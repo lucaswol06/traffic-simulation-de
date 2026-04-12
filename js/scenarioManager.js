@@ -6,12 +6,16 @@
   var scenarioLog = null;
   var scenarioLastFrameTime = null;
   var scenarioFrameLimitReached = false;
+  var scenarioLastStatsUiTime = null;
+  var scenarioLastAutoExportTime = null;
+  var scenarioAutoExportCounter = 0;
   var scenarioLogConfig = {
     enabled: true,
     sampleEverySec: 0.5,
     maxFrames: 20000,
     logRegularOnly: false,
     includeSpecialVehicles: true,
+    autoExportEverySec: 0,
     schemaVersion: "1.0.0"
   };
 
@@ -20,17 +24,42 @@
     if (!container) return;
 
     var panel = document.createElement("div");
+    panel.id = "scenarioPanel";
+    panel.style.background = "#f2f2f2";
+    panel.style.border = "1px solid #999";
+    panel.style.padding = "6px";
+    panel.style.marginBottom = "6px";
+    panel.style.position = "absolute";
+    panel.style.left = "110vmin";
+    panel.style.top = "0vmin";
+    panel.style.width = "55vmin";
+    panel.style.zIndex = "5";
+    panel.style.maxHeight = "38vmin";
+    panel.style.overflow = "auto";
+    panel.innerHTML =
+      '<button id="scenarioToggle" style="display:block;width:100%;text-align:left;font-weight:bold;">[open] Scenario JSON Input</button>' +
+      '<div id="scenarioBody" style="display:block;margin-top:6px;">' +
+        '<textarea id="scenarioInput" style="width:100%;height:140px;box-sizing:border-box;" placeholder="{\n  &quot;seed&quot;: 42,\n  &quot;duration&quot;: 60,\n  &quot;timewarp&quot;: 6\n}"></textarea>' +
+        '<div style="margin-top:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
+          '<button id="scenarioRunBtn">Run Scenario</button>' +
+          '<button id="scenarioClearBtn">Clear</button>' +
+          '<button id="scenarioExportBtn">Export Scenario Log JSON</button>' +
+        '</div>' +
+        '<div id="scenarioStatus" style="margin-top:6px;color:#555;"></div>' +
+        '<pre id="scenarioStats" style="margin-top:6px;padding:8px;background:#f5f5f5;border:1px solid #ddd;white-space:pre-wrap;"></pre>' +
+      '</div>';
 
-    // insert after buttons, before canvas
-    var simDiv = document.getElementById("simCanvas") || document.getElementById("canvas_onramp") || container.querySelector("canvas");
-    if (simDiv && simDiv.parentNode === container) {
-      container.insertBefore(panel, simDiv);
-    } 
+    var sidebarRef = document.getElementById("scenarios") || document.getElementById("sliders") || document.getElementById("contents");
+    if (sidebarRef && sidebarRef.parentNode === container) {
+      container.insertBefore(panel, sidebarRef);
+    } else {
+      container.insertBefore(panel, container.firstChild);
+    }
 
     // toggle expand/collapse
     document.getElementById("scenarioToggle").addEventListener("click", function() {
       var body = document.getElementById("scenarioBody");
-      var arrow = body.style.display === "none" ? "Open" : "CLose";
+      var arrow = body.style.display === "none" ? "[open]" : "[close]";
       body.style.display = body.style.display === "none" ? "block" : "none";
       this.innerHTML = arrow + " Scenario JSON Input";
     });
@@ -45,6 +74,14 @@
       exportBtn.addEventListener("click", function() {
         exportScenarioLogJson();
       });
+    }
+
+    var statsEl = document.getElementById("scenarioStats");
+    if (statsEl) statsEl.textContent = "";
+
+    var inputEl = document.getElementById("scenarioInput");
+    if (inputEl && !inputEl.value.trim()) {
+      inputEl.value = getDefaultScenarioJson();
     }
   }
 
@@ -70,6 +107,60 @@
     return errors;
   }
 
+  function getDefaultScenarioJson() {
+    return JSON.stringify({
+      seed: 42,
+      duration: 60,
+      timewarp: 6,
+      parameters: {
+        qIn: 4500,         // inflow to the main road [veh/h]
+        qOn: 1200,         // inflow to the onramp [veh/h]
+        fracTruck: 0.1,    // fraction of trucks in the traffic stream
+        IDM_v0: 30,        // desired speed in the car-following model [m/s]
+        IDM_T: 1.4,        // desired time headway [s]
+        IDM_a: 0.3,        // maximum acceleration [m/s^2]
+        MOBIL_p: 0.1       // lane-changing politeness factor
+      },
+      vehicles: [
+        {
+          id: 301,     // custom vehicle id
+          road: 0,     // road index where the vehicle starts
+          type: "car", // vehicle type
+          lane: 0,     // lane number
+          u: 100,      // position along the road [m]
+          speed: 25,   // initial speed [m/s]
+          isAV: false  // whether the vehicle is an autonomous vehicle
+        },
+        {
+          id: 302,
+          road: 0,
+          type: "car",
+          lane: 1,
+          u: 70,
+          speed: 10,
+          isAV: true
+        }
+      ],
+      actions: [
+        {
+          time: 10,
+          vehicleId: 301,
+          set: {
+            speed: 0
+          }
+        }
+      ],
+      logging: {
+        enabled: true,
+        sampleEverySec: 0.5,
+        autoExportEverySec: 0,
+        maxFrames: 5000,
+        includeSpecialVehicles: true,
+        logRegularOnly: false
+      }
+    }, null, 2);
+  }
+
   function nowIsoString() {
     try {
       return new Date().toISOString();
@@ -90,6 +181,7 @@
       maxFrames: scenarioLogConfig.maxFrames,
       logRegularOnly: scenarioLogConfig.logRegularOnly,
       includeSpecialVehicles: scenarioLogConfig.includeSpecialVehicles,
+      autoExportEverySec: scenarioLogConfig.autoExportEverySec,
       schemaVersion: scenarioLogConfig.schemaVersion
     };
 
@@ -103,6 +195,9 @@
       }
       if (loggingInput.logRegularOnly !== undefined) merged.logRegularOnly = !!loggingInput.logRegularOnly;
       if (loggingInput.includeSpecialVehicles !== undefined) merged.includeSpecialVehicles = !!loggingInput.includeSpecialVehicles;
+      if (loggingInput.autoExportEverySec !== undefined) {
+        merged.autoExportEverySec = Math.max(0, toFiniteNumber(loggingInput.autoExportEverySec, merged.autoExportEverySec));
+      }
       if (loggingInput.schemaVersion !== undefined && typeof loggingInput.schemaVersion === "string" && loggingInput.schemaVersion.trim() !== "") {
         merged.schemaVersion = loggingInput.schemaVersion.trim();
       }
@@ -129,7 +224,8 @@
         sampleEverySec: cfg.sampleEverySec,
         maxFrames: cfg.maxFrames,
         logRegularOnly: cfg.logRegularOnly,
-        includeSpecialVehicles: cfg.includeSpecialVehicles
+        includeSpecialVehicles: cfg.includeSpecialVehicles,
+        autoExportEverySec: cfg.autoExportEverySec
       },
       events: [],
       frames: [],
@@ -137,6 +233,9 @@
     };
     scenarioLastFrameTime = null;
     scenarioFrameLimitReached = false;
+    scenarioLastStatsUiTime = null;
+    scenarioLastAutoExportTime = null;
+    scenarioAutoExportCounter = 0;
     window.scenarioLogData = scenarioLog;
     return scenarioLog;
   }
@@ -326,7 +425,270 @@
     return scenarioLog;
   }
 
-  function makeScenarioLogFilename() {
+  function buildEmptyTypeStats() {
+    return {
+      sampleCount: 0,
+      speedSum: 0,
+      speedAvg: 0,
+      speedMin: null,
+      speedMax: null,
+      uniqueVehicleCount: 0
+    };
+  }
+
+  function computeScenarioStats() {
+    if (!scenarioLog) return null;
+    if (!scenarioLog.frames || !Array.isArray(scenarioLog.frames)) {
+      scenarioLog.stats = {};
+      return scenarioLog.stats;
+    }
+
+    var frames = scenarioLog.frames;
+    var perVehicleMap = {};
+    var byType = {};
+    var firstTime = null;
+    var lastTime = null;
+    var vehicleCountMin = null;
+    var vehicleCountMax = null;
+    var vehicleCountSum = 0;
+    var vehicleCountSamples = 0;
+
+    for (var i = 0; i < frames.length; i++) {
+      var frame = frames[i];
+      if (!frame || !frame.vehicles) {
+        continue;
+      }
+
+      var t = frame.t;
+      if (typeof t === "number") {
+        if (firstTime === null || t < firstTime) {
+          firstTime = t;
+        }
+        if (lastTime === null || t > lastTime) {
+          lastTime = t;
+        }
+      }
+
+      var count = frame.vehicleCount;
+      if (typeof count !== "number") {
+        count = frame.vehicles.length;
+      }
+      if (vehicleCountMin === null || count < vehicleCountMin) {
+        vehicleCountMin = count;
+      }
+      if (vehicleCountMax === null || count > vehicleCountMax) {
+        vehicleCountMax = count;
+      }
+      vehicleCountSum += count;
+      vehicleCountSamples += 1;
+
+      for (var j = 0; j < frame.vehicles.length; j++) {
+        var veh = frame.vehicles[j];
+        if (!veh) continue;
+
+        var vid = String(veh.id);
+        if (!perVehicleMap[vid]) {
+          perVehicleMap[vid] = {
+            id: veh.id,
+            type: veh.type,
+            sampleCount: 0,
+            speedSum: 0,
+            speedMin: null,
+            speedMax: null,
+            speedAvg: 0,
+            distanceTraveled: 0,
+            laneChanges: 0,
+            activeTime: 0,
+            firstSeenTime: t,
+            lastSeenTime: t,
+            lastU: null,
+            lastLane: null,
+            lastT: null
+          };
+        }
+
+        var s = perVehicleMap[vid];
+        s.sampleCount += 1;
+
+        if (typeof veh.speed === "number") {
+          s.speedSum += veh.speed;
+          if (s.speedMin === null || veh.speed < s.speedMin) {
+            s.speedMin = veh.speed;
+          }
+          if (s.speedMax === null || veh.speed > s.speedMax) {
+            s.speedMax = veh.speed;
+          }
+        }
+
+        if (typeof t === "number") {
+          if (s.firstSeenTime === null || t < s.firstSeenTime) {
+            s.firstSeenTime = t;
+          }
+          if (s.lastSeenTime === null || t > s.lastSeenTime) {
+            s.lastSeenTime = t;
+          }
+        }
+
+        if (typeof veh.u === "number" && typeof s.lastU === "number") {
+          var du = veh.u - s.lastU;
+          if (du < 0) {
+            du = Math.abs(du);
+          }
+          s.distanceTraveled += du;
+        }
+
+        if (s.lastLane !== null && veh.lane !== s.lastLane) {
+          s.laneChanges += 1;
+        }
+
+        if (typeof t === "number" && s.lastT !== null) {
+          var dtLocal = t - s.lastT;
+          if (dtLocal > 0) {
+            s.activeTime += dtLocal;
+          }
+        }
+
+        s.lastU = (typeof veh.u === "number") ? veh.u : s.lastU;
+        s.lastLane = (veh.lane !== undefined) ? veh.lane : s.lastLane;
+        s.lastT = (typeof t === "number") ? t : s.lastT;
+
+        var typeKey = (veh.type !== undefined && veh.type !== null) ? String(veh.type) : "unknown";
+        if (!byType[typeKey]) {
+          byType[typeKey] = buildEmptyTypeStats();
+          byType[typeKey].vehicleIds = {};
+        }
+        var typeStats = byType[typeKey];
+        typeStats.sampleCount += 1;
+        if (typeof veh.speed === "number") {
+          typeStats.speedSum += veh.speed;
+          if (typeStats.speedMin === null || veh.speed < typeStats.speedMin) {
+            typeStats.speedMin = veh.speed;
+          }
+          if (typeStats.speedMax === null || veh.speed > typeStats.speedMax) {
+            typeStats.speedMax = veh.speed;
+          }
+        }
+        typeStats.vehicleIds[vid] = true;
+      }
+    }
+
+    var perVehicle = [];
+    for (var vehicleId in perVehicleMap) {
+      if (perVehicleMap.hasOwnProperty(vehicleId)) {
+        var sv = perVehicleMap[vehicleId];
+        if (sv.sampleCount > 0) {
+          sv.speedAvg = sv.speedSum / sv.sampleCount;
+        }
+        delete sv.speedSum;
+        delete sv.lastU;
+        delete sv.lastLane;
+        delete sv.lastT;
+        perVehicle.push(sv);
+      }
+    }
+
+    var byTypeOut = {};
+    for (var typeName in byType) {
+      if (byType.hasOwnProperty(typeName)) {
+        var st = byType[typeName];
+        if (st.sampleCount > 0) {
+          st.speedAvg = st.speedSum / st.sampleCount;
+        }
+        var ids = st.vehicleIds;
+        var uniqueCount = 0;
+        for (var idKey in ids) {
+          if (ids.hasOwnProperty(idKey)) {
+            uniqueCount += 1;
+          }
+        }
+        st.uniqueVehicleCount = uniqueCount;
+        delete st.speedSum;
+        delete st.vehicleIds;
+        byTypeOut[typeName] = st;
+      }
+    }
+
+    var runDuration = 0;
+    if (firstTime !== null && lastTime !== null && lastTime >= firstTime) {
+      runDuration = lastTime - firstTime;
+    }
+
+    scenarioLog.stats = {
+      summary: {
+        frameCount: frames.length,
+        eventCount: scenarioLog.events ? scenarioLog.events.length : 0,
+        uniqueVehicleCount: perVehicle.length,
+        runDuration: runDuration,
+        firstFrameTime: firstTime,
+        lastFrameTime: lastTime,
+        vehicleCountMin: vehicleCountMin,
+        vehicleCountMax: vehicleCountMax,
+        vehicleCountAvg: vehicleCountSamples > 0 ? (vehicleCountSum / vehicleCountSamples) : 0
+      },
+      byType: byTypeOut,
+      perVehicle: perVehicle
+    };
+
+    return scenarioLog.stats;
+  }
+
+  function formatStatNumber(value) {
+    if (value === null || value === undefined) return "-";
+    if (typeof value !== "number") return String(value);
+    return (Math.round(value * 100) / 100).toFixed(2);
+  }
+
+  function updateScenarioStatsDisplay(forceUpdate) {
+    var statsEl = document.getElementById("scenarioStats");
+    if (!statsEl) return;
+
+    if (!scenarioLog) {
+      statsEl.textContent = "";
+      return;
+    }
+
+    var nowTime = (typeof window.time === "number") ? window.time : 0;
+    if (!forceUpdate && scenarioLastStatsUiTime !== null) {
+      if (nowTime - scenarioLastStatsUiTime < 0.5) {
+        return;
+      }
+    }
+
+    var stats = computeScenarioStats();
+    if (!stats || !stats.summary) {
+      return;
+    }
+
+    var summary = stats.summary;
+    var lines = [];
+    lines.push("Frames: " + summary.frameCount);
+    lines.push("Vehicles tracked: " + summary.uniqueVehicleCount);
+    lines.push("Run duration [s]: " + formatStatNumber(summary.runDuration));
+    lines.push(
+      "Vehicle count avg/min/max: "
+      + formatStatNumber(summary.vehicleCountAvg)
+      + " / " + formatStatNumber(summary.vehicleCountMin)
+      + " / " + formatStatNumber(summary.vehicleCountMax)
+    );
+
+    var typeParts = [];
+    if (stats.byType) {
+      for (var typeName in stats.byType) {
+        if (stats.byType.hasOwnProperty(typeName)) {
+          var tStats = stats.byType[typeName];
+          typeParts.push(typeName + "=" + formatStatNumber(tStats.speedAvg) + " m/s");
+        }
+      }
+    }
+    if (typeParts.length > 0) {
+      lines.push("Avg speed by type: " + typeParts.join(", "));
+    }
+
+    statsEl.textContent = lines.join("\n");
+    scenarioLastStatsUiTime = nowTime;
+  }
+
+  function makeScenarioLogFilename(suffix) {
     var scenarioName = "scenario";
     if (typeof window.scenarioString !== "undefined" && window.scenarioString) {
       scenarioName = String(window.scenarioString);
@@ -343,7 +705,11 @@
       timePart = String(Math.round(window.time * 10) / 10).replace(/\./g, "_");
     }
 
-    return "scenarioLog_" + safeName + "_seed" + seedPart + "_t" + timePart + ".json";
+    var name = "scenarioLog_" + safeName + "_seed" + seedPart + "_t" + timePart;
+    if (suffix) {
+      name += "_" + suffix;
+    }
+    return name + ".json";
   }
 
   function downloadJsonContent(content, filename) {
@@ -371,22 +737,49 @@
     return true;
   }
 
-  function exportScenarioLogJson(filenameOverride) {
+  function exportScenarioLogJson(filenameOverride, skipExportEvent) {
     if (!scenarioLog) {
       setStatus("No scenario log to export.");
       return false;
     }
 
-    addScenarioEvent("log_export_requested", {
-      frameCount: scenarioLog.frames ? scenarioLog.frames.length : 0,
-      eventCount: scenarioLog.events ? scenarioLog.events.length : 0
-    });
+    if (!skipExportEvent) {
+      addScenarioEvent("log_export_requested", {
+        frameCount: scenarioLog.frames ? scenarioLog.frames.length : 0,
+        eventCount: scenarioLog.events ? scenarioLog.events.length : 0
+      });
+    }
+
+    computeScenarioStats();
 
     var filename = filenameOverride || makeScenarioLogFilename();
     var content = JSON.stringify(scenarioLog, null, 2);
     downloadJsonContent(content, filename);
     setStatus("Scenario log exported: " + filename);
     return true;
+  }
+
+  function maybeAutoExportScenarioLog() {
+    if (!scenarioLog) return;
+    if (!scenarioLog.config) return;
+
+    var everySec = scenarioLog.config.autoExportEverySec;
+    if (!(everySec > 0)) return;
+    if (typeof window.time !== "number") return;
+
+    if (scenarioLastAutoExportTime === null) {
+      scenarioLastAutoExportTime = window.time;
+      return;
+    }
+
+    if (window.time - scenarioLastAutoExportTime < everySec) {
+      return;
+    }
+
+    scenarioLastAutoExportTime = window.time;
+    scenarioAutoExportCounter += 1;
+    var filename = makeScenarioLogFilename("auto" + scenarioAutoExportCounter);
+    exportScenarioLogJson(filename, true);
   }
 
   function updateScenarioLogConfigRuntime(partialConfig) {
@@ -397,6 +790,7 @@
       scenarioLog.config.maxFrames = cfg.maxFrames;
       scenarioLog.config.logRegularOnly = cfg.logRegularOnly;
       scenarioLog.config.includeSpecialVehicles = cfg.includeSpecialVehicles;
+      scenarioLog.config.autoExportEverySec = cfg.autoExportEverySec;
     }
     return cfg;
   }
@@ -641,6 +1035,8 @@
         captureScenarioFrame();
         applyActions();
         checkDuration();
+        updateScenarioStatsDisplay(false);
+        maybeAutoExportScenarioLog();
       }
     };
   }
@@ -662,10 +1058,13 @@
 
   //=== 9. RUN SCENARIO ===
   function runScenario() {
-    var input = document.getElementById("scenarioInput").value.trim();
+    var inputEl = document.getElementById("scenarioInput");
+    var input = inputEl ? inputEl.value.trim() : "";
     if (!input) {
-      setStatus("Error: empty input");
-      return;
+      input = getDefaultScenarioJson();
+      if (inputEl) {
+        inputEl.value = input;
+      }
     }
 
     var data;
@@ -814,6 +1213,7 @@
       fps: fps,
       intervalMs: 1000 / fps
     });
+    updateScenarioStatsDisplay(true);
 
     setStatus("Scenario running" + (data.duration ? " (duration: " + data.duration + "s)" : ""));
     console.log("scenarioManager: scenario loaded and running", data);
@@ -829,6 +1229,7 @@
       scenarioActionsApplied = {};
       restoreAutoGeneration();
       setStatus("Scenario cleared. Use Restart to reset simulation.");
+      updateScenarioStatsDisplay(true);
     } else {
       setStatus("No active scenario.");
     }
@@ -848,6 +1249,7 @@
         maxFrames: scenarioLogConfig.maxFrames,
         logRegularOnly: scenarioLogConfig.logRegularOnly,
         includeSpecialVehicles: scenarioLogConfig.includeSpecialVehicles,
+        autoExportEverySec: scenarioLogConfig.autoExportEverySec,
         schemaVersion: scenarioLogConfig.schemaVersion
       };
     },
@@ -862,6 +1264,14 @@
     },
     getLog: function() {
       return getScenarioLogData();
+    },
+    computeStats: function() {
+      return computeScenarioStats();
+    },
+    getStats: function() {
+      if (!scenarioLog) return null;
+      if (!scenarioLog.stats) return null;
+      return scenarioLog.stats;
     },
     exportLog: function(filename) {
       return exportScenarioLogJson(filename);
