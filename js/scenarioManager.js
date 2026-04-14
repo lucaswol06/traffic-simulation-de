@@ -119,7 +119,9 @@
         IDM_v0: 30,        // desired speed in the car-following model [m/s]
         IDM_T: 1.4,        // desired time headway [s]
         IDM_a: 0.3,        // maximum acceleration [m/s^2]
-        MOBIL_p: 0.1       // lane-changing politeness factor
+        MOBIL_p: 0.1,      // lane-changing politeness factor
+        CACC_T_platoon: 0.5, // AV platoon time gap (AV follows AV) [s]
+        CACC_alpha: 0.4    // CACC feedforward gain on leader acceleration [0–1]
       },
       vehicles: [
         {
@@ -396,6 +398,7 @@
           roadID: rd.roadID,
           type: veh.type,
           isAV: !!veh.isAV,
+          caccActive: !!veh.caccActive,
           u: veh.u,
           v: veh.v,
           lane: veh.lane,
@@ -814,6 +817,8 @@
       // AV
       "IDM_v0_AV": "IDM_v0_AV", "IDM_T_AV": "IDM_T_AV",
       "IDM_s0_AV": "IDM_s0_AV", "IDM_a_AV": "IDM_a_AV", "IDM_b_AV": "IDM_b_AV",
+      // CACC platoon (AV following AV)
+      "CACC_T_platoon": "CACC_T_platoon", "CACC_alpha": "CACC_alpha",
       // MOBIL
       "MOBIL_bSafe": "MOBIL_bSafe", "MOBIL_bSafeMax": "MOBIL_bSafeMax",
       "MOBIL_p": "MOBIL_p", "MOBIL_bThr": "MOBIL_bThr",
@@ -882,6 +887,7 @@
         veh.id = vd.id;
       }
       veh.isAV = !!vd.isAV;
+      veh.noLaneChange = !!vd.noLaneChange;
 
       // Set route if specified
       if (vd.route) {
@@ -946,6 +952,8 @@
                 targetVeh.v = setObj[prop];
               } else if (prop === "isAV") {
                 targetVeh.isAV = setObj[prop];
+              } else if (prop === "noLaneChange") {
+                targetVeh.noLaneChange = !!setObj[prop];
               } else if (prop === "type") {
                 targetVeh.type = setObj[prop];
               } else if (prop === "longModel") {

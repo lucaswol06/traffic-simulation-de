@@ -1035,6 +1035,7 @@ if(document.getElementById("slider_MOBIL_p")!==null){
 var longModelCar;
 var longModelTruck;
 var longModelAV;
+var longModelCACCPlatoon;
 var LCModelCar;
 var LCModelTruck;
 var LCModelAV;
@@ -1069,6 +1070,10 @@ var IDM_s0_AV=1.0;    // slightly smaller minimum gap
 var IDM_a_AV=0.5;     // somewhat stronger acceleration than default car
 var IDM_b_AV=3.0;     // comfortable decel
 
+// CACC platoon parameters -  activated when an AV follows another AV
+var CACC_T_platoon=0.5;  // even shorter time gap inside an AV platoon [s]
+var CACC_alpha=0.4;      // feedforward gain on leader's acceleration [0–1]
+
 
 // creates template models from the preset IDM_v0, IDM_a etc values
 // (2019-09)
@@ -1085,6 +1090,11 @@ function updateModels(){
   longModelCar=new ACC(v0,IDM_T,IDM_s0,IDM_a,IDM_b);
   longModelTruck=new ACC(v0_truck,T_truck,IDM_s0,a_truck,IDM_b);
   longModelAV=new ACC(v0_AV,IDM_T_AV,IDM_s0_AV,IDM_a_AV,IDM_b_AV);
+
+  // CACC model used when an AV is directly behind another AV  - platoon mode
+  longModelCACCPlatoon=new CACC(v0_AV,CACC_T_platoon,IDM_s0_AV,
+                                IDM_a_AV,IDM_b_AV,1,CACC_alpha);
+  longModelCACCPlatoon.speedlimit=speedL;
 
   if(testNewModel){
     longModelCar=new CACC(v0,IDM_T,IDM_s0,IDM_a,IDM_b,1,0.1);

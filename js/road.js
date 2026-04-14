@@ -1693,10 +1693,20 @@ road.prototype.calcAccelerations=function(){
         // (it may have truck model by this.updateModelsOfAllVehicles)
         // do not accelerate programmatically the ego vehicle(s)
 
-	if(this.veh[i].id>1){ // no ego vehicles  
-	    this.veh[i].acc =(this.veh[i].isRegularVeh()) // longit w/random
-		? this.veh[i].longModel.calcAcc(s,speed,speedLead,accLead)
-		: 0;
+	if(this.veh[i].id>1){ // no ego vehicles
+	    if(this.veh[i].isRegularVeh()){
+		// CACC: if this vehicle is an AV and its leader is also an AV,
+		// activate platoon mode (tighter gap + feedforward on leader's acc)
+		var leaderIsAV = this.veh[iLead].isAV;
+		var useCACC = this.veh[i].isAV && leaderIsAV;
+		this.veh[i].caccActive = useCACC;
+		this.veh[i].acc = useCACC
+		    ? longModelCACCPlatoon.calcAcc(s,speed,speedLead,accLead)
+		    : this.veh[i].longModel.calcAcc(s,speed,speedLead,accLead);
+	    } else {
+		this.veh[i].acc = 0;
+		this.veh[i].caccActive = false;
+	    }
 	}
 
 
@@ -1938,7 +1948,9 @@ road.prototype.doChangesInDirection=function(toRight){
     // now for safety reset MOBILOK=false for each candidate anew
     
     
-    var MOBILOK=false; 
+    var MOBILOK=false;
+
+    if(this.veh[i].noLaneChange){ continue; } // scenario-controlled LC disable
 
     var beyondStart=(this.veh[i].u>this.uminLC);
     var outsideLCban=((this.veh[i].u<this.LCbanStart)

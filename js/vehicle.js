@@ -26,7 +26,9 @@ function vehicle(length, width, u, lane, speed, type, driver_varcoeff){
   this.laneOld=lane;  // for logging and drawing vontinuous lat coords v
   this.speed=speed;
   this.type=type; //{"car", "truck", "others", "obstacle"
-  this.isAV=false;   // distinguishes autonomous vs human-driven cars
+  this.isAV=false;         // distinguishes autonomous vs human-driven cars
+  this.caccActive=false;   // true when this AV is in CACC platoon mode (following another AV)
+  this.noLaneChange=false; // if true, vehicle never changes lanes
   this.acc=0;
 
   ivehCount++;
