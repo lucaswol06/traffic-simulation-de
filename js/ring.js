@@ -157,7 +157,7 @@ function updateDimensions(){ // if viewport or sizePhys changed
 // => road becomes more compact for smaller screens
 
 var laneWidth=8; // remains constant => road becomes more compact for smaller
-var nLanes_main=1;
+var nLanes_main = (typeof window.configuredNLanes !== "undefined") ? window.configuredNLanes : 1;
 
 var car_length=7; // car length in m
 var car_width=6; // car width in m
@@ -286,6 +286,43 @@ roadImg2 = new Image();
 roadImg2=roadImgs2[nLanes_main-1];
 
 
+//############################################
+// function to reconfigure road with different number of lanes
+//############################################
+
+function reconfigureRoadLanes(newNLanes) {
+  if (newNLanes === nLanes_main) return true;
+
+  console.log("Reconfiguring road from " + nLanes_main + " to " + newNLanes + " lanes");
+
+  // Clear old road's vehicles explicitly before creating new road
+  if (network && network.length > 0 && network[0]) {
+    network[0].veh = [];  // Clear all vehicles
+  }
+
+  nLanes_main = newNLanes;
+
+  // Update road images
+  roadImg1 = roadImgs1[nLanes_main-1];
+  roadImg2 = roadImgs2[nLanes_main-1];
+
+  // Rrecreate the main road
+  isRing = true;
+  roadID = 1;
+  speedInit = 20;
+  mainroad = new road(roadID, mainroadLen, laneWidth, nLanes_main, trajIn,
+                      density, speedInit, fracTruck, isRing);
+  mainroad.setDriverVariation(driver_varcoeff);
+  network[0] = mainroad;
+  network[0].drawVehIDs = drawVehIDs;
+
+  detectors = [];
+  for(var idet=0; idet<4; idet++){
+    detectors[idet] = new stationaryDetector(mainroad,
+                                            (0.125+idet*0.25)*mainroadLen, 10);
+  }
+  return true;
+}
 
 
 //############################################

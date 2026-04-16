@@ -1232,6 +1232,9 @@ road.prototype.updateTruckFrac=function(fracTruck, mismatchTolerated){
 
 road.prototype.updateDensity=function(density){
 
+  // We need to skip density management during scenario runs to preserve placed vehicles
+  if(window.scenarioActive) return;
+
   var fracOthers=(typeof fracScooter === 'undefined') ? 0 : fracScooter;
 
   var nDesired= Math.floor(this.nLanes*this.roadLen*density);
@@ -1693,8 +1696,8 @@ road.prototype.calcAccelerations=function(){
         // (it may have truck model by this.updateModelsOfAllVehicles)
         // do not accelerate programmatically the ego vehicle(s)
 
-	if(this.veh[i].id>1){ // no ego vehicles
-	    if(this.veh[i].isRegularVeh()){
+	if(this.veh[i].id>1 || this.veh[i].scenarioVeh){ // no ego vehicles, but allow scenario vehicles
+	    if(this.veh[i].isRegularVeh() || this.veh[i].scenarioVeh){
 		// CACC: if this vehicle is an AV and its leader is also an AV,
 		// activate platoon mode (tighter gap + feedforward on leader's acc)
 		var leaderIsAV = this.veh[iLead].isAV;
@@ -1871,7 +1874,7 @@ road.prototype.updateSpeedPositions=function(){
 
   for(var i=0; i<this.veh.length; i++){
 
-    if( (this.veh[i].id!=1) && (this.veh[i].isRegularVeh())){
+    if( (this.veh[i].id!=1 || this.veh[i].scenarioVeh) && (this.veh[i].isRegularVeh() || this.veh[i].scenarioVeh)){
 
 
 
@@ -3964,6 +3967,11 @@ road.prototype.updateModelsOfAllVehicles=function(longModelCar,longModelTruck,
   for(var i=0; i<this.veh.length; i++){
   if(this.veh[i].isRegularVeh()){
 
+    // Skip scenario-placed vehicles to preserve their custom models
+    if(this.veh[i].scenarioVeh && window.scenarioActive) {
+      continue;
+    }
+
     if(this.veh[i].type === "truck"){
       this.veh[i].longModel.copy(longModelTruck);
       this.veh[i].LCModel.copy(LCModelTruck);
@@ -4835,13 +4843,19 @@ road.prototype.drawVehicle=function(i,carImg, truckImg, obstacleImg,
 
   ctx.fillRect(-0.5*effLenPix, -0.5*effWPix, effLenPix, effWPix);
 
-  if(isEgo||this.veh[i].isPerturbed()||(this.veh[i].colorStyle>0)||this.veh[i].isAV){
-      ctx.strokeStyle="rgb(0,0,0)";
-      ctx.strokeRect(-0.50*effLenPix, -0.50*effWPix, 
+  // Determine if vehicle should have outline
+  var hasOutline = isEgo || (this.veh[i].colorStyle>0) || this.veh[i].isAV
+    || (this.veh[i].hasScheduledAction)
+    || (this.veh[i].isPerturbed() && !this.veh[i].scenarioVeh);
+
+  if(hasOutline){
+      // Red outline for vehicles with scheduled actions, black for others
+      ctx.strokeStyle = this.veh[i].hasScheduledAction ? "rgb(255,0,0)" : "rgb(0,0,0)";
+      ctx.strokeRect(-0.50*effLenPix, -0.50*effWPix,
              1.0*effLenPix, 1.0*effWPix);
-      ctx.strokeRect(-0.55*effLenPix, -0.55*effWPix, 
+      ctx.strokeRect(-0.55*effLenPix, -0.55*effWPix,
              1.1*effLenPix, 1.1*effWPix);
-      ctx.strokeRect(-0.60*effLenPix, -0.60*effWPix, 
+      ctx.strokeRect(-0.60*effLenPix, -0.60*effWPix,
              1.2*effLenPix, 1.2*effWPix);
     }
   }

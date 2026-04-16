@@ -183,7 +183,7 @@ IDM.prototype.calcAccDet=function(s,v,vl,al){
 
         // return original IDM
 
-  return (v0eff<0.00001) ? 0 
+  return (v0eff<0.00001) ? -this.bmax
 	: Math.max(-this.bmax, accFree + accInt);
 
         // return IDM+
@@ -380,7 +380,7 @@ ACC.prototype.calcAccDet=function(s,v,vl,al){ // this works as well
 
   var accACC=this.cool*accMix +(1-this.cool)*accIDM;
 
-  var accReturn=(v0eff<0.00001) ? 0 : Math.max(-this.bmax, accACC);
+  var accReturn=(v0eff<0.00001) ? -this.bmax : Math.max(-this.bmax, accACC);
 
         // log and return
 
@@ -513,7 +513,7 @@ CACC.prototype.calcAccDet = function (s, v, vl, al) {
 
   var accTotal = accFree + accInt + accCoop;
 
-  return (v0eff < 0.00001) ? 0 : Math.max(-this.bmax, accTotal);
+  return (v0eff < 0.00001) ? -this.bmax : Math.max(-this.bmax, accTotal);
 };
 
 // Example Usage:

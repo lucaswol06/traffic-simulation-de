@@ -1,0 +1,751 @@
+{
+  "seed": 42,
+  "duration": 500,
+  "timewarp": 5,
+  "nLanes": 2,
+  "parameters": {
+    "CACC_T_platoon": 0.6,
+    "CACC_alpha": 0.5,
+    "IDM_v0": 30,
+    "IDM_T": 1.4,
+    "IDM_s0": 2,
+    "IDM_a": 1.5,
+    "IDM_b": 2.0,
+    "IDM_v0_AV": 30,
+    "IDM_T_AV": 1.4,
+    "IDM_s0_AV": 2,
+    "IDM_a_AV": 2.0,
+    "IDM_b_AV": 3.0,
+    "fracTruck": 0,
+    "driver_varcoeff": 0.1,
+    "MOBIL_p": 0.1
+  },
+  "vehicles": [
+    {
+      "id": 1,
+      "road": 0,
+      "type": "car",
+      "lane": 0,
+      "u": 177.4,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 2,
+      "road": 0,
+      "type": "car",
+      "lane": 0,
+      "u": 154.8,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 3,
+      "road": 0,
+      "type": "car",
+      "lane": 0,
+      "u": 132.2,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 4,
+      "road": 0,
+      "type": "car",
+      "lane": 0,
+      "u": 109.6,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 5,
+      "road": 0,
+      "type": "car",
+      "lane": 0,
+      "u": 87.0,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 6,
+      "road": 0,
+      "type": "car",
+      "lane": 0,
+      "u": 64.4,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 7,
+      "road": 0,
+      "type": "car",
+      "lane": 0,
+      "u": 41.8,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 8,
+      "road": 0,
+      "type": "car",
+      "lane": 0,
+      "u": 19.2,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 9,
+      "road": 0,
+      "type": "car",
+      "lane": 0,
+      "u": 787.6,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 10,
+      "road": 0,
+      "type": "car",
+      "lane": 0,
+      "u": 765.0,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 11,
+      "road": 0,
+      "type": "car",
+      "lane": 0,
+      "u": 742.4,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 12,
+      "road": 0,
+      "type": "car",
+      "lane": 0,
+      "u": 719.8,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 13,
+      "road": 0,
+      "type": "car",
+      "lane": 0,
+      "u": 697.2,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 14,
+      "road": 0,
+      "type": "car",
+      "lane": 0,
+      "u": 674.6,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 15,
+      "road": 0,
+      "type": "car",
+      "lane": 0,
+      "u": 652.0,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 16,
+      "road": 0,
+      "type": "car",
+      "lane": 0,
+      "u": 629.4,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 17,
+      "road": 0,
+      "type": "car",
+      "lane": 0,
+      "u": 606.8,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 18,
+      "road": 0,
+      "type": "car",
+      "lane": 0,
+      "u": 584.2,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 19,
+      "road": 0,
+      "type": "car",
+      "lane": 0,
+      "u": 561.6,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 20,
+      "road": 0,
+      "type": "car",
+      "lane": 0,
+      "u": 539.0,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 21,
+      "road": 0,
+      "type": "car",
+      "lane": 0,
+      "u": 516.4,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 22,
+      "road": 0,
+      "type": "car",
+      "lane": 0,
+      "u": 493.8,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 23,
+      "road": 0,
+      "type": "car",
+      "lane": 0,
+      "u": 471.2,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 24,
+      "road": 0,
+      "type": "car",
+      "lane": 0,
+      "u": 448.6,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 25,
+      "road": 0,
+      "type": "car",
+      "lane": 0,
+      "u": 426.0,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 26,
+      "road": 0,
+      "type": "car",
+      "lane": 0,
+      "u": 403.4,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 27,
+      "road": 0,
+      "type": "car",
+      "lane": 0,
+      "u": 380.8,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 28,
+      "road": 0,
+      "type": "car",
+      "lane": 0,
+      "u": 358.2,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 29,
+      "road": 0,
+      "type": "car",
+      "lane": 0,
+      "u": 335.6,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 30,
+      "road": 0,
+      "type": "car",
+      "lane": 0,
+      "u": 313.0,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 31,
+      "road": 0,
+      "type": "car",
+      "lane": 0,
+      "u": 290.4,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 32,
+      "road": 0,
+      "type": "car",
+      "lane": 0,
+      "u": 267.8,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 33,
+      "road": 0,
+      "type": "car",
+      "lane": 0,
+      "u": 245.2,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 34,
+      "road": 0,
+      "type": "car",
+      "lane": 0,
+      "u": 222.6,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 35,
+      "road": 0,
+      "type": "car",
+      "lane": 1,
+      "u": 177.4,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 36,
+      "road": 0,
+      "type": "car",
+      "lane": 1,
+      "u": 154.8,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 37,
+      "road": 0,
+      "type": "car",
+      "lane": 1,
+      "u": 132.2,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 38,
+      "road": 0,
+      "type": "car",
+      "lane": 1,
+      "u": 109.6,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 39,
+      "road": 0,
+      "type": "car",
+      "lane": 1,
+      "u": 87.0,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 40,
+      "road": 0,
+      "type": "car",
+      "lane": 1,
+      "u": 64.4,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 41,
+      "road": 0,
+      "type": "car",
+      "lane": 1,
+      "u": 41.8,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 42,
+      "road": 0,
+      "type": "car",
+      "lane": 1,
+      "u": 19.2,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 43,
+      "road": 0,
+      "type": "car",
+      "lane": 1,
+      "u": 787.6,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 44,
+      "road": 0,
+      "type": "car",
+      "lane": 1,
+      "u": 765.0,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 45,
+      "road": 0,
+      "type": "car",
+      "lane": 1,
+      "u": 742.4,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 46,
+      "road": 0,
+      "type": "car",
+      "lane": 1,
+      "u": 719.8,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 47,
+      "road": 0,
+      "type": "car",
+      "lane": 1,
+      "u": 697.2,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 48,
+      "road": 0,
+      "type": "car",
+      "lane": 1,
+      "u": 674.6,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 49,
+      "road": 0,
+      "type": "car",
+      "lane": 1,
+      "u": 652.0,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 50,
+      "road": 0,
+      "type": "car",
+      "lane": 1,
+      "u": 629.4,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 51,
+      "road": 0,
+      "type": "car",
+      "lane": 1,
+      "u": 606.8,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 52,
+      "road": 0,
+      "type": "car",
+      "lane": 1,
+      "u": 584.2,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 53,
+      "road": 0,
+      "type": "car",
+      "lane": 1,
+      "u": 561.6,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 54,
+      "road": 0,
+      "type": "car",
+      "lane": 1,
+      "u": 539.0,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 55,
+      "road": 0,
+      "type": "car",
+      "lane": 1,
+      "u": 516.4,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 56,
+      "road": 0,
+      "type": "car",
+      "lane": 1,
+      "u": 493.8,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 57,
+      "road": 0,
+      "type": "car",
+      "lane": 1,
+      "u": 471.2,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 58,
+      "road": 0,
+      "type": "car",
+      "lane": 1,
+      "u": 448.6,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 59,
+      "road": 0,
+      "type": "car",
+      "lane": 1,
+      "u": 426.0,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 60,
+      "road": 0,
+      "type": "car",
+      "lane": 1,
+      "u": 403.4,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 61,
+      "road": 0,
+      "type": "car",
+      "lane": 1,
+      "u": 380.8,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 62,
+      "road": 0,
+      "type": "car",
+      "lane": 1,
+      "u": 358.2,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 63,
+      "road": 0,
+      "type": "car",
+      "lane": 1,
+      "u": 335.6,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 64,
+      "road": 0,
+      "type": "car",
+      "lane": 1,
+      "u": 313.0,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 65,
+      "road": 0,
+      "type": "car",
+      "lane": 1,
+      "u": 290.4,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 66,
+      "road": 0,
+      "type": "car",
+      "lane": 1,
+      "u": 267.8,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 67,
+      "road": 0,
+      "type": "car",
+      "lane": 1,
+      "u": 245.2,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 68,
+      "road": 0,
+      "type": "car",
+      "lane": 1,
+      "u": 222.6,
+      "speed": 9.1,
+      "isAV": true,
+      "noLaneChange": false
+    },
+    {
+      "id": 201,
+      "road": 0,
+      "type": "car",
+      "lane": 0,
+      "u": 200.0,
+      "speed": 9.1,
+      "isAV": false,
+      "noLaneChange": true
+    }
+  ],
+  "actions": [
+    {
+      "time": 30,
+      "vehicleId": 201,
+      "set": {
+        "longModel": {
+          "v0": 0,
+          "T": 1.4,
+          "s0": 2,
+          "a": 1.5,
+          "b": 4.0
+        }
+      }
+    },
+    {
+      "time": 35,
+      "vehicleId": 201,
+      "set": {
+        "longModel": {
+          "v0": 30,
+          "T": 1.4,
+          "s0": 2,
+          "a": 1.5,
+          "b": 2.0
+        }
+      }
+    }
+  ],
+  "logging": {
+    "enabled": true,
+    "sampleEverySec": 1.0,
+    "autoExportEverySec": 0,
+    "maxFrames": 5000,
+    "includeSpecialVehicles": true,
+    "logRegularOnly": false
+  }
+}

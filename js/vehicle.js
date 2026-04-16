@@ -42,6 +42,7 @@ function vehicle(length, width, u, lane, speed, type, driver_varcoeff){
 
   this.fracLaneOptical=1; // slow optical LC over fracLaneOptical lanes
   this.colorStyle=0;  // {hue as f(speed), thick-red, thick-green}
+  this.hasScheduledAction=false; // true if this vehicle has a scheduled action in scenario
 
   this.dt_LC=4;       // fixed vehicle property
   this.dt_afterLC=10; // dynamical variable incremented and reset at LC

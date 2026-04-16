@@ -1015,8 +1015,11 @@ if(document.getElementById("slider_MOBIL_p")!==null){
 
 var longModelCar;
 var longModelTruck;
+var longModelAV;
+var longModelCACCPlatoon;
 var LCModelCar;
 var LCModelTruck;
+var LCModelAV;
 var LCModelMandatory; // left-right discrim in road.updateModelsOfAllVehicles
 
 var longModelCarUphill;
@@ -1040,6 +1043,19 @@ var MOBIL_mandat_bias=42;
 var factor_a_truck=0.8; // v0_truck controlled/restricted by speedL_truck
 var factor_T_truck=1.1;
 
+// AV model parameters
+var fracAV=0.20;
+var fracAVToleratedMismatch=1;
+
+var IDM_v0_AV=30;
+var IDM_T_AV=0.8;
+var IDM_s0_AV=1.0;
+var IDM_a_AV=0.5;
+var IDM_b_AV=3.0;
+
+var CACC_T_platoon=0.5;
+var CACC_alpha=0.4;
+
 
 // creates template models from the preset IDM_v0, IDM_a etc values
 // (2019-09)
@@ -1048,24 +1064,37 @@ var factor_T_truck=1.1;
 function updateModels(){
   var v0=Math.min(IDM_v0, speedL);
   var v0_truck=Math.min(IDM_v0, speedL_truck);
+  var v0_AV=Math.min(IDM_v0_AV, speedL);
   var T_truck=factor_T_truck*IDM_T;
   var a_truck=factor_a_truck*IDM_a;
   longModelCar=new ACC(v0,IDM_T,IDM_s0,IDM_a,IDM_b);
   longModelTruck=new ACC(v0_truck,T_truck,IDM_s0,a_truck,IDM_b);
+  longModelAV=new ACC(v0_AV,IDM_T_AV,IDM_s0_AV,IDM_a_AV,IDM_b_AV);
+
+  longModelCACCPlatoon=new CACC(v0_AV,CACC_T_platoon,IDM_s0_AV,
+                                IDM_a_AV,IDM_b_AV,1,CACC_alpha);
+  longModelCACCPlatoon.speedlimit=speedL;
+
   if(testNewModel){
     longModelCar=new CACC(v0,IDM_T,IDM_s0,IDM_a,IDM_b,1,0.1);
-    //longModelTruck=new CACC(v0_truck,T_truck,IDM_s0,a_truck,IDM_b,1,0.1);
     longModelTruck=new CACC(3,T_truck,IDM_s0,a_truck,IDM_b,1,0.1);
+    longModelAV=new CACC(v0_AV,IDM_T_AV,IDM_s0_AV,IDM_a_AV,IDM_b_AV,1,0.1);
     console.log("longModelTruck=",longModelTruck);
   }
   longModelCar.speedlimit=speedL;
   longModelTruck.speedlimit=Math.min(speedL, speedL_truck);
+  longModelAV.speedlimit=speedL;
+
   LCModelCar=new MOBIL(MOBIL_bSafe, MOBIL_bSafeMax, MOBIL_p,
                         MOBIL_bThr, MOBIL_bBiasRight_car);
- 
+
   LCModelTruck=new MOBIL(MOBIL_bSafe, MOBIL_bSafeMax, MOBIL_p,
 			   MOBIL_bThr, MOBIL_bBiasRight_truck);
-  LCModelMandatory=new MOBIL(MOBIL_mandat_bSafe, MOBIL_mandat_bSafe, 
+
+  LCModelAV=new MOBIL(MOBIL_bSafe, MOBIL_bSafeMax, MOBIL_p,
+                      MOBIL_bThr, MOBIL_bBiasRight_car);
+
+  LCModelMandatory=new MOBIL(MOBIL_mandat_bSafe, MOBIL_mandat_bSafe,
 			       MOBIL_mandat_p,
 			       MOBIL_mandat_bThr, MOBIL_mandat_bias);
 

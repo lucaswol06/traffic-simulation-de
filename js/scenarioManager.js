@@ -802,6 +802,27 @@
     return updateScenarioLogConfigRuntime({ enabled: !!isEnabled });
   }
 
+  function markVehiclesWithActions(actions) {
+    if (!actions || !Array.isArray(actions) || typeof network === "undefined") return;
+
+    // Extract vehicle IDs that have actions
+    var vehicleIdsWithActions = {};
+    for (var i = 0; i < actions.length; i++) {
+      var a = actions[i];
+      if (a.vehicleId !== undefined) {
+        vehicleIdsWithActions[a.vehicleId] = true;
+      }
+    }
+
+    // Mark those vehicles
+    for (var ir = 0; ir < network.length; ir++) {
+      for (var iv = 0; iv < network[ir].veh.length; iv++) {
+        var veh = network[ir].veh[iv];
+        veh.hasScheduledAction = vehicleIdsWithActions[veh.id] === true;
+      }
+    }
+  }
+
   // IDM_v0: desired speed (free-flow speed)
   // IDM_T: desired time headway (seconds gap to the car ahead)
   // IDM_s0: minimum distance to the car ahead
@@ -910,6 +931,7 @@
         veh.driverfactor = vd.driverfactor;
       }
 
+      veh.scenarioVeh = true;  // protect from model overwrites
       rd.veh.push(veh);
     }
 
@@ -1091,6 +1113,7 @@
 
     scenarioData = data;
     scenarioActive = true;
+    window.scenarioActive = true;
     scenarioActionsApplied = {};
     initializeScenarioLog(data);
     addScenarioEvent("scenario_loaded", {
@@ -1155,6 +1178,25 @@
       });
     }
 
+    // Cclear all vehicles from network BEFORE lane reconfiguration
+    for (var ir_pre = 0; ir_pre < network.length; ir_pre++) {
+      network[ir_pre].veh = [];
+      network[ir_pre].inVehBuffer = 0;
+    }
+
+    // Reconfigure road lanes if specified in scenario
+    var configuredNLanes = data.nLanes !== undefined ? data.nLanes : 1;
+    if (typeof window.reconfigureRoadLanes === "function" && network && network.length > 0) {
+      var currentNLanes = network[0].nLanes || 1;
+      if (configuredNLanes !== currentNLanes) {
+        window.reconfigureRoadLanes(configuredNLanes);
+        addScenarioEvent("lanes_reconfigured", {
+          fromLanes: currentNLanes,
+          toLanes: configuredNLanes
+        });
+      }
+    }
+
     // Handle vehicles: if defined, override all auto-generation
     if (data.vehicles && data.vehicles.length > 0) {
       // Set generation to 0 unless overridden by parameters
@@ -1177,6 +1219,7 @@
         network[ir].inVehBuffer = 0;
       }
       placeVehicles(data.vehicles);
+      markVehiclesWithActions(data.actions);
       addScenarioEvent("vehicles_placed", {
         mode: "scenario_defined",
         count: data.vehicles.length
@@ -1233,6 +1276,7 @@
         reason: "manual_clear"
       });
       scenarioActive = false;
+      window.scenarioActive = false;
       scenarioData = null;
       scenarioActionsApplied = {};
       restoreAutoGeneration();
