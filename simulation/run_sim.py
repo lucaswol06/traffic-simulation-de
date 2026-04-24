@@ -8,20 +8,22 @@ PROJECT_DIR = pathlib.Path(__file__).parent
 RING_HTML = PROJECT_DIR.parent / "ring.html"
 LOG_DIR = PROJECT_DIR / "LOG"
 SCENARIOS_DIR = PROJECT_DIR / "scenarios"
+RUN_SEEDS = [0, 1, 2]
 
-LOG_SINGLE_LANE_DIR = LOG_DIR / "SINGLE_LANE"
-LOG_DOUBLE_LANE_DIR = LOG_DIR / "DOUBLE_LANE"
+def _log_dir_for(lane_label: str, seed: int) -> pathlib.Path:
+    return LOG_DIR / lane_label / f"seed_{seed}"
 
-def run_scenario(scenario_name: str, output_filename: str, output_dir: pathlib.Path = None) -> bool:
-    if output_dir is None:
-        output_dir = LOG_DIR
-
-    scenario_path = SCENARIOS_DIR / f"{scenario_name}.json"
+def run_scenario(scenario_name: str, output_filename: str, output_dir: pathlib.Path) -> bool:
     output_path = output_dir / output_filename
 
     if output_path.exists():
         print(f"[SKIP] {scenario_name} (already exists)")
         return True
+
+    scenario_path = SCENARIOS_DIR / scenario_name
+    if not scenario_path.exists():
+        print(f"[ERROR] Scenario file not found: {scenario_path}")
+        return False
 
     print(f"[START] {scenario_name}")
     with open(scenario_path) as f:
@@ -67,51 +69,67 @@ def run_scenario(scenario_name: str, output_filename: str, output_dir: pathlib.P
 
         with open(output_path, "w") as f:
             json.dump(log_data, f, indent=2)
+        print(f"[DONE] {output_filename}")
         return True
 
-    except Exception:
+    except Exception as e:
+        print(f"[FAIL] {scenario_name}: {e}")
         return False
 
-def main():
-    cacc_scenarios = [
-        ("exp1_cacc", "exp1_cacc.json", LOG_DIR),
-        ("exp2_cacc", "exp2_cacc.json", LOG_DIR),
-        ("exp1_pd", "exp1_pd.json", LOG_DIR),
-    ]
-
-    def build_phantom_scenario_list(pattern_prefix: str, output_dir: pathlib.Path) -> list:
-        scenarios = []
-        if SCENARIOS_DIR.exists():
-            matches = list(SCENARIOS_DIR.glob(f"{pattern_prefix}*.json"))
-            matches.sort(key=lambda f: int(f.stem.split("_")[-1].rstrip("pct")) if f.stem.split("_")[-1].endswith("pct") else 0)
-            for scenario_file in matches:
-                scenario_name = scenario_file.stem
-                output_filename = scenario_name.replace("_1lane_", "_").replace("_2lane_", "_2lane_") + ".json"
-                scenarios.append((scenario_name, output_filename, output_dir))
+def build_phantom_scenario_list(n_lanes: int, lane_label: str, seed: int) -> list:
+    scenarios = []
+    seed_dir = SCENARIOS_DIR / f"seed_{seed}"
+    if not seed_dir.exists():
         return scenarios
 
-    phantom_single_lane = build_phantom_scenario_list("phantom_jam_1lane_", LOG_SINGLE_LANE_DIR)
-    phantom_double_lane = build_phantom_scenario_list("phantom_jam_2lane_", LOG_DOUBLE_LANE_DIR)
+    prefix = f"phantom_jam_{n_lanes}lane_"
+    matches = sorted(seed_dir.glob(f"{prefix}*.json"),
+                     key=lambda f: int(f.stem.split("_")[-1].rstrip("pct") or 0))
 
-    scenarios = cacc_scenarios + phantom_single_lane + phantom_double_lane
+    output_dir = _log_dir_for(lane_label, seed)
+    for scenario_file in matches:
+        # scenario_path passed as relative string: "seed_X/filename.json"
+        rel_path = f"seed_{seed}/{scenario_file.name}"
+        output_filename = scenario_file.name
+        scenarios.append((rel_path, output_filename, output_dir))
+    return scenarios
+
+def main():
+    all_scenarios = []
+
+    for seed in RUN_SEEDS:
+        all_scenarios += build_phantom_scenario_list(1, "SINGLE_LANE", seed)
+        all_scenarios += build_phantom_scenario_list(2, "DOUBLE_LANE", seed)
+        all_scenarios += build_phantom_scenario_list(3, "TRIPLE_LANE", seed)
+        all_scenarios += build_phantom_scenario_list(4, "QUAD_LANE",   seed)
+
+    print(f"Total scenarios to run: {len(all_scenarios)}")
     max_workers = 25
     results = []
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {}
-        for scenario_name, output_filename, output_dir in scenarios:
-            future = executor.submit(run_scenario, scenario_name, output_filename, output_dir)
-            futures[future] = scenario_name
+        for scenario_rel, output_filename, output_dir in all_scenarios:
+            future = executor.submit(run_scenario, scenario_rel, output_filename, output_dir)
+            futures[future] = scenario_rel
 
         for future in as_completed(futures):
             try:
                 success = future.result()
                 results.append((futures[future], success))
-            except Exception:
+            except Exception as e:
+                print(f"[EXCEPTION] {futures[future]}: {e}")
                 results.append((futures[future], False))
-    print("DONE")
 
-    return 0 if all(success for _, success in results) else 1
+    failed = [name for name, ok in results if not ok]
+    if failed:
+        print(f"\n[WARN] {len(failed)} scenarios failed:")
+        for name in failed:
+            print(f"  {name}")
+    else:
+        print(f"\n[DONE] All {len(results)} scenarios completed successfully.")
+
+    return 0 if not failed else 1
 
 if __name__ == "__main__":
     sys.exit(main())

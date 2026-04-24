@@ -11,6 +11,8 @@ PERTURBER_ID = 201          # The "Orange Car"
 PERTURBER_POS = 200.0       # Starting position of the perturber
 # Lane switching threshold (MOBIL politeness factor for double-lane scenarios)
 MOBIL_P = 0.1               # Lane change politeness factor [0-1], lower = more aggressive
+BASE_SIM_SEED = 42
+RUN_SEEDS = [0, 1, 2]
 
 BASE_PARAMETERS = {
     "CACC_T_platoon": 0.6,
@@ -61,27 +63,31 @@ PENETRATION_RATES = [
     (0.50, "50%"), (0.60, "60%"), (0.70, "70%"), (0.80, "80%"), (0.90, "90%"), (1.00, "100%"),
 ]
 
-def compute_av_indices(frac_av, n_background):
+def compute_av_indices(frac_av, n_background, run_seed=0):
     if frac_av < 0.01: return set()
     if frac_av > 0.99: return set(range(n_background))
-    n_av = round(frac_av * n_background)
-    indices = set()
-    for k in range(n_av):
-        idx = round(k * n_background / n_av) % n_background
-        indices.add(idx)
-    return indices
 
-def generate_vehicle_list(frac_av, n_lanes=1, allow_lane_change=False):
+    import random
+    n_av = round(frac_av * n_background)
+
+    seed = int(frac_av * 1000) + run_seed * 1000
+    rng = random.Random(seed)
+
+    all_indices = list(range(n_background))
+    rng.shuffle(all_indices)
+    selected = set(all_indices[:n_av])
+
+    return selected
+
+def generate_vehicle_list(frac_av, n_lanes=1, allow_lane_change=False, run_seed=0):
     vehicles = []
 
-    # Calculate spacing and background vehicles per lane
     spacing = RING_CIRCUMFERENCE / VEH_PER_LANE
     n_background_per_lane = VEH_PER_LANE - 1
 
-    # For multi-lane scenarios, create vehicles for each lane
     vehicle_id = 1
     for lane in range(n_lanes):
-        av_indices = compute_av_indices(frac_av, n_background_per_lane)
+        av_indices = compute_av_indices(frac_av, n_background_per_lane, run_seed=run_seed)
 
         for i in range(n_background_per_lane):
             pos = (PERTURBER_POS - (i + 1) * spacing) % RING_CIRCUMFERENCE
@@ -95,11 +101,11 @@ def generate_vehicle_list(frac_av, n_lanes=1, allow_lane_change=False):
                 "u": round(pos, 3),
                 "speed": EQUILIBRIUM_SPEED,
                 "isAV": is_av,
-                "noLaneChange": not allow_lane_change  # True for single-lane, False for double-lane
+                "noLaneChange": not allow_lane_change
             })
             vehicle_id += 1
 
-    # Add the Perturber in lane 0
+    # Perturber always in lane 0, always human-driven
     vehicles.append({
         "id": PERTURBER_ID,
         "road": 0,
@@ -108,37 +114,41 @@ def generate_vehicle_list(frac_av, n_lanes=1, allow_lane_change=False):
         "u": PERTURBER_POS,
         "speed": EQUILIBRIUM_SPEED,
         "isAV": False,
-        "noLaneChange": True  # Perturber always fixed to lane 0, regardless of scenario type
+        "noLaneChange": True
     })
 
     return vehicles
 
-def generate_scenario(frac_av, n_lanes=1, allow_lane_change=False):
+def generate_scenario(frac_av, n_lanes=1, allow_lane_change=False, run_seed=0):
     params = BASE_PARAMETERS.copy()
     return {
-        "seed": 42,
+        "seed": BASE_SIM_SEED + run_seed * 100,
         "duration": 500,
         "timewarp": 5,
         "nLanes": n_lanes,
         "parameters": params,
-        "vehicles": generate_vehicle_list(frac_av, n_lanes, allow_lane_change),
+        "vehicles": generate_vehicle_list(frac_av, n_lanes, allow_lane_change, run_seed=run_seed),
         "actions": BASE_ACTIONS,
         "logging": BASE_LOGGING
     }
 
 def main():
-    SCENARIOS_DIR.mkdir(exist_ok=True)
+    for run_seed in RUN_SEEDS:
+        seed_dir = SCENARIOS_DIR / f"seed_{run_seed}"
+        seed_dir.mkdir(parents=True, exist_ok=True)
 
-    for frac_av, label in PENETRATION_RATES:
-        scenario = generate_scenario(frac_av, n_lanes=1, allow_lane_change=False)
-        filepath = SCENARIOS_DIR / f"phantom_jam_1lane_{label.replace('%', 'pct')}.json"
-        with open(filepath, "w") as f:
-            json.dump(scenario, f, indent=2)
+        for frac_av, label in PENETRATION_RATES:
+            for n_lanes in [1, 2, 3, 4]:
+                allow_lane_change = n_lanes > 1
+                scenario = generate_scenario(frac_av, n_lanes=n_lanes,
+                                             allow_lane_change=allow_lane_change,
+                                             run_seed=run_seed)
+                filepath = seed_dir / f"phantom_jam_{n_lanes}lane_{label.replace('%', 'pct')}.json"
+                with open(filepath, "w") as f:
+                    json.dump(scenario, f, indent=2)
 
-        scenario = generate_scenario(frac_av, n_lanes=2, allow_lane_change=True)
-        filepath = SCENARIOS_DIR / f"phantom_jam_2lane_{label.replace('%', 'pct')}.json"
-        with open(filepath, "w") as f:
-            json.dump(scenario, f, indent=2)
+    total = len(RUN_SEEDS) * len(PENETRATION_RATES) * 4
+    print(f"Generated {total} scenario files across {len(RUN_SEEDS)} seeds.")
 
 if __name__ == "__main__":
     main()
